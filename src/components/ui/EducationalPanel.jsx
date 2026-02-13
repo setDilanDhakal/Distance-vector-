@@ -120,20 +120,7 @@ Loop:
                 </ol>
               </div>
             </div>
-            <div className="border rounded-md p-3">
-              <h4 className="font-semibold text-gray-800">Solutions</h4>
-              <ul className="list-disc list-inside text-xs space-y-2 text-gray-600">
-                <li>
-                  <strong>Split Horizon:</strong> Do not advertise a route back to the neighbor you learned it from.
-                </li>
-                <li>
-                  <strong>Poisoned Reverse:</strong> Advertise the route back as unreachable (Infinity) to the neighbor you learned it from.
-                </li>
-              </ul>
-              <p className="mt-2 text-xs text-gray-500">
-                Use the "Algorithm" dropdown in controls to test these solutions on the scenario above.
-              </p>
-            </div>
+            
           </div>
         )}
       </CardContent>
