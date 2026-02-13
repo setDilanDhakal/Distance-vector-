@@ -1,12 +1,10 @@
 import React from 'react';
-import { useSimulation } from '../../context/SimulationContext';
-import { INFINITY } from '../../utils/algorithm';
+import { useSimulation } from '../../context/SimulationContext.jsx';
+import { INFINITY } from '../../utils/algorithm.js';
 
 export const GlobalRoutingTable = () => {
   const { state } = useSimulation();
   const { topology, simulation } = state;
-
-  // Sort nodes by label
   const sortedNodes = [...topology.nodes].sort((a, b) => a.label.localeCompare(b.label));
 
   return (
@@ -31,31 +29,26 @@ export const GlobalRoutingTable = () => {
               {sortedNodes.map(targetNode => {
                 const nodeState = simulation.nodeStates[sourceNode.id];
                 if (!nodeState) {
-                    return <td key={targetNode.id} className="p-2 border border-gray-300 text-center text-gray-400">-</td>;
+                  return <td key={targetNode.id} className="p-2 border border-gray-300 text-center text-gray-400">-</td>;
                 }
-                
                 const entry = nodeState.routingTable[targetNode.id];
-                // Check if entry exists
                 if (!entry) {
-                     return <td key={targetNode.id} className="p-2 border border-gray-300 text-center text-gray-400">?</td>;
+                  return <td key={targetNode.id} className="p-2 border border-gray-300 text-center text-gray-400">?</td>;
                 }
-
                 const isInfinite = entry.cost >= INFINITY;
                 const nextHopId = entry.nextHop;
                 const nextHopLabel = nextHopId ? topology.nodes.find(n => n.id === nextHopId)?.label : '';
-                
                 return (
                   <td key={targetNode.id} className="p-2 border border-gray-300 text-center">
                     <div className="flex flex-col items-center justify-center">
-                        <span className={`font-medium ${isInfinite ? 'text-gray-400' : 'text-gray-900'}`}>
-                            {isInfinite ? '∞' : entry.cost}
+                      <span className={`font-medium ${isInfinite ? 'text-gray-400' : 'text-gray-900'}`}>
+                        {isInfinite ? '∞' : entry.cost}
+                      </span>
+                      {!isInfinite && sourceNode.id !== targetNode.id && (
+                        <span className="text-[10px] text-gray-500">
+                          via {nextHopLabel || '-'}
                         </span>
-                        {/* Optional: Show next hop in small text */}
-                        {!isInfinite && sourceNode.id !== targetNode.id && (
-                            <span className="text-[10px] text-gray-500">
-                                via {nextHopLabel || '-'}
-                            </span>
-                        )}
+                      )}
                     </div>
                   </td>
                 );

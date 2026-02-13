@@ -1,6 +1,6 @@
 import React from 'react';
-import { SimulationProvider } from './context/SimulationContext';
-import { SimulationPage } from './pages/SimulationPage';
+import { SimulationProvider } from './context/SimulationContext.jsx';
+import { SimulationPage } from './pages/SimulationPage.jsx';
 
 function App() {
   return (

@@ -1,7 +1,6 @@
-import { Node, Link, NetworkTopology } from '../types/network';
 import { v4 as uuidv4 } from 'uuid';
 
-export const createNode = (label: string, x: number, y: number): Node => {
+export const createNode = (label, x, y) => {
   return {
     id: uuidv4(),
     label,
@@ -10,7 +9,7 @@ export const createNode = (label: string, x: number, y: number): Node => {
   };
 };
 
-export const createLink = (sourceId: string, targetId: string, cost: number): Link => {
+export const createLink = (sourceId, targetId, cost) => {
   return {
     id: uuidv4(),
     source: sourceId,
@@ -19,8 +18,8 @@ export const createLink = (sourceId: string, targetId: string, cost: number): Li
   };
 };
 
-export const getNeighbors = (nodeId: string, links: Link[]): { nodeId: string; cost: number }[] => {
-  const neighbors: { nodeId: string; cost: number }[] = [];
+export const getNeighbors = (nodeId, links) => {
+  const neighbors = [];
   links.forEach((link) => {
     if (link.source === nodeId) {
       neighbors.push({ nodeId: link.target, cost: link.cost });
@@ -31,7 +30,7 @@ export const getNeighbors = (nodeId: string, links: Link[]): { nodeId: string; c
   return neighbors;
 };
 
-export const findLink = (sourceId: string, targetId: string, links: Link[]): Link | undefined => {
+export const findLink = (sourceId, targetId, links) => {
   return links.find(
     (l) => (l.source === sourceId && l.target === targetId) || (l.source === targetId && l.target === sourceId)
   );

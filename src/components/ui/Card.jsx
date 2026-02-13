@@ -1,12 +1,12 @@
 import React from 'react';
-import { clsx, type ClassValue } from 'clsx';
+import { clsx } from 'clsx';
 import { twMerge } from 'tailwind-merge';
 
-function cn(...inputs: ClassValue[]) {
+function cn(...inputs) {
   return twMerge(clsx(inputs));
 }
 
-export const Card = ({ className, children, ...props }: React.HTMLAttributes<HTMLDivElement>) => {
+export const Card = ({ className, children, ...props }) => {
   return (
     <div
       className={cn('bg-white rounded-lg border border-gray-200 shadow-sm', className)}
@@ -17,7 +17,7 @@ export const Card = ({ className, children, ...props }: React.HTMLAttributes<HTM
   );
 };
 
-export const CardHeader = ({ className, children, ...props }: React.HTMLAttributes<HTMLDivElement>) => {
+export const CardHeader = ({ className, children, ...props }) => {
   return (
     <div className={cn('p-4 border-b border-gray-100', className)} {...props}>
       {children}
@@ -25,7 +25,7 @@ export const CardHeader = ({ className, children, ...props }: React.HTMLAttribut
   );
 };
 
-export const CardTitle = ({ className, children, ...props }: React.HTMLAttributes<HTMLHeadingElement>) => {
+export const CardTitle = ({ className, children, ...props }) => {
   return (
     <h3 className={cn('text-lg font-semibold text-gray-900', className)} {...props}>
       {children}
@@ -33,7 +33,7 @@ export const CardTitle = ({ className, children, ...props }: React.HTMLAttribute
   );
 };
 
-export const CardContent = ({ className, children, ...props }: React.HTMLAttributes<HTMLDivElement>) => {
+export const CardContent = ({ className, children, ...props }) => {
   return (
     <div className={cn('p-4', className)} {...props}>
       {children}
