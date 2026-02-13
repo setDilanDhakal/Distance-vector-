@@ -8,6 +8,7 @@ export const RoutingTableList = () => {
   const { state } = useSimulation();
   const { topology, simulation } = state;
   const { nodeStates } = simulation;
+  const modeLabel = simulation.routingMode === 'ospf' ? 'OSPF' : 'Distance Vector';
   const active = simulation.activePacket;
   const activePath = active?.path || [];
   const activeDestId = activePath.length > 0 ? activePath[activePath.length - 1] : null;
@@ -58,6 +59,9 @@ export const RoutingTableList = () => {
                   {node.label}
                 </div>
                 <span className="font-semibold text-sm text-slate-700">Routing Table</span>
+                <span className={`ml-2 text-[10px] px-2 py-0.5 rounded ${simulation.routingMode === 'ospf' ? 'bg-indigo-100 text-indigo-700 border border-indigo-200' : 'bg-blue-100 text-blue-700 border border-blue-200'}`}>
+                  {modeLabel}
+                </span>
               </div>
               {nodeState && (
                 <span className="text-xs text-slate-400">

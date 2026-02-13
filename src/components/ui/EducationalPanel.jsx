@@ -6,7 +6,8 @@ import { createNode, createLink } from '../../utils/graphUtils.js';
 
 export const EducationalPanel = () => {
   const [activeTab, setActiveTab] = useState('theory');
-  const { dispatch } = useSimulation();
+  const { state, dispatch } = useSimulation();
+  const mode = state.simulation.routingMode || 'dv';
 
   const loadCountToInfinityDemo = () => {
     const nodeA = createNode('A', 100, 200);
@@ -16,6 +17,23 @@ export const EducationalPanel = () => {
     const links = [
       createLink(nodeA.id, nodeB.id, 1),
       createLink(nodeB.id, nodeC.id, 1)
+    ];
+    dispatch({ type: 'LOAD_TOPOLOGY', payload: { nodes, links } });
+    dispatch({ type: 'RESET_SIMULATION' });
+  };
+
+  const loadOspfDemo = () => {
+    const nodeA = createNode('A', 120, 180);
+    const nodeB = createNode('B', 320, 120);
+    const nodeC = createNode('C', 520, 180);
+    const nodeD = createNode('D', 320, 300);
+    const nodes = [nodeA, nodeB, nodeC, nodeD];
+    const links = [
+      createLink(nodeA.id, nodeB.id, 2),
+      createLink(nodeB.id, nodeC.id, 2),
+      createLink(nodeA.id, nodeD.id, 5),
+      createLink(nodeD.id, nodeC.id, 1),
+      createLink(nodeB.id, nodeD.id, 3)
     ];
     dispatch({ type: 'LOAD_TOPOLOGY', payload: { nodes, links } });
     dispatch({ type: 'RESET_SIMULATION' });
@@ -46,7 +64,7 @@ export const EducationalPanel = () => {
         </div>
       </CardHeader>
       <CardContent className="flex-1 overflow-y-auto p-4 text-sm leading-relaxed text-gray-700">
-        {activeTab === 'theory' && (
+        {activeTab === 'theory' && mode === 'dv' && (
           <div className="space-y-4">
             <h3 className="font-bold text-gray-900">Distance Vector Routing</h3>
             <p>
@@ -71,7 +89,29 @@ export const EducationalPanel = () => {
           </div>
         )}
 
-        {activeTab === 'code' && (
+        {activeTab === 'theory' && mode === 'ospf' && (
+          <div className="space-y-4">
+            <h3 className="font-bold text-gray-900">OSPF (Open Shortest Path First)</h3>
+            <p>
+              OSPF is a <strong>link-state</strong> routing protocol. Each router learns the full topology by exchanging
+              <strong> Link-State Advertisements (LSAs)</strong> with neighbors and builds a <strong>Link-State Database (LSDB)</strong>.
+              Shortest paths are computed using the <strong>Dijkstra (SPF)</strong> algorithm.
+            </p>
+            <div className="bg-indigo-50 p-3 rounded-md border border-indigo-100">
+              <h4 className="font-semibold text-indigo-800 mb-1">Key Concepts:</h4>
+              <ul className="list-disc list-inside space-y-1 text-indigo-700">
+                <li>Routers flood LSAs so all nodes learn the same topology.</li>
+                <li>The LSDB represents the graph of routers and weighted links.</li>
+                <li>Each router runs SPF to compute next hops and costs to all destinations.</li>
+              </ul>
+            </div>
+            <p>
+              <strong>Update Rule:</strong> On receiving a newer LSA, update the LSDB, flood it to neighbors, and rerun SPF to refresh routes.
+            </p>
+          </div>
+        )}
+
+        {activeTab === 'code' && mode === 'dv' && (
           <div className="space-y-4">
             <h3 className="font-bold text-gray-900">Bellman-Ford Logic</h3>
             <pre className="bg-slate-900 text-slate-300 p-3 rounded-md text-xs font-mono overflow-x-auto">
@@ -98,7 +138,34 @@ Loop:
           </div>
         )}
 
-        {activeTab === 'demo' && (
+        {activeTab === 'code' && mode === 'ospf' && (
+          <div className="space-y-4">
+            <h3 className="font-bold text-gray-900">OSPF SPF (Dijkstra)</h3>
+            <pre className="bg-slate-900 text-slate-300 p-3 rounded-md text-xs font-mono overflow-x-auto">
+{`// On LSA reception:
+if is_newer(LSA):
+  LSDB.update(LSA)
+  flood_to_neighbors(LSA)
+  SPF()
+
+// SPF for router s:
+for all nodes u:
+  dist[u] = ∞; prev[u] = null
+dist[s] = 0
+while exists unvisited u:
+  u = argmin_unvisited(dist)
+  mark_visited(u)
+  for each neighbor v of u:
+    alt = dist[u] + cost(u,v)
+    if alt < dist[v]:
+      dist[v] = alt
+      prev[v] = u
+// next_hop(d) = first hop on path s→...→d from prev[]`}
+            </pre>
+          </div>
+        )}
+
+        {activeTab === 'demo' && mode === 'dv' && (
           <div className="space-y-4">
             <h3 className="font-bold text-gray-900">Interactive Demonstrations</h3>
             <div className="border rounded-md p-3">
@@ -121,6 +188,29 @@ Loop:
               </div>
             </div>
             
+          </div>
+        )}
+
+        {activeTab === 'demo' && mode === 'ospf' && (
+          <div className="space-y-4">
+            <h3 className="font-bold text-gray-900">Interactive Demonstrations</h3>
+            <div className="border rounded-md p-3">
+              <h4 className="font-semibold text-gray-800">LSA Flood and SPF Recompute</h4>
+              <p className="mb-3 text-xs text-gray-600">
+                Shows how a new link or cost change triggers LSAs, updates the LSDB, and recomputes shortest paths.
+              </p>
+              <Button size="sm" onClick={loadOspfDemo}>
+                Load Sample Topology (A-B-C-D)
+              </Button>
+              <div className="mt-2 text-xs bg-indigo-50 p-2 text-indigo-800 rounded">
+                <strong>Try:</strong>
+                <ol className="list-decimal list-inside mt-1">
+                  <li>Run step or auto to compute SPF.</li>
+                  <li>Select a link and change its cost.</li>
+                  <li>Step again to see tables and next hops update immediately.</li>
+                </ol>
+              </div>
+            </div>
           </div>
         )}
       </CardContent>

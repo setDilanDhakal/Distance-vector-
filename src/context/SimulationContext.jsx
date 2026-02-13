@@ -1,18 +1,38 @@
 import React, { createContext, useContext, useReducer } from 'react';
 import { initializeNodeState, runDistanceVectorStep } from '../utils/algorithm.js';
+import { runOSPFStep } from '../utils/ospf.js';
 
-const getInitialSimulationState = (topology) => {
+const nextIp = (nodes) => {
+  const used = new Set(nodes.map(n => n.ip).filter(Boolean));
+  let i = 1;
+  while (used.has(`10.0.0.${i}`)) i += 1;
+  return `10.0.0.${i}`;
+};
+
+const getInitialSimulationState = (topology, routingMode = 'dv') => {
   const initialNodeStates = {};
   topology.nodes.forEach(node => {
     initialNodeStates[node.id] = initializeNodeState(node.id, topology);
   });
+  const inboxes = {};
+  topology.nodes.forEach(node => { inboxes[node.id] = []; });
+  let computedStates = initialNodeStates;
+  let lsdb = {};
+  if (routingMode === 'ospf') {
+    const res = runOSPFStep(topology, initialNodeStates);
+    computedStates = res.nextStates;
+    lsdb = res.lsdb;
+  }
   return {
     step: 0,
     isRunning: false,
-    nodeStates: initialNodeStates,
-    history: { 0: initialNodeStates },
+    routingMode,
+    nodeStates: computedStates,
+    history: { 0: computedStates },
     messages: [{ id: 'init', from: 'System', to: 'All', content: 'Simulation Initialized', type: 'info' }],
-    activePacket: null
+    activePacket: null,
+    inboxes,
+    lsdb
   };
 };
 
@@ -24,10 +44,13 @@ const initialState = {
   simulation: {
     step: 0,
     isRunning: false,
+    routingMode: 'dv',
     nodeStates: {},
     history: {},
     messages: [],
     activePacket: null,
+    inboxes: {},
+    lsdb: {}
   },
 };
 
@@ -64,8 +87,7 @@ const simulationReducer = (state, action) => {
         }
       };
     case 'ADD_NODE': {
-
-      const newNode = { id: crypto.randomUUID(), label: action.payload.label, x: action.payload.x, y: action.payload.y };
+      const newNode = { id: crypto.randomUUID(), label: action.payload.label, x: action.payload.x, y: action.payload.y, ip: nextIp(state.topology.nodes) };
       const topologyWithNode = {
         ...state.topology,
         nodes: [...state.topology.nodes, newNode],
@@ -73,7 +95,7 @@ const simulationReducer = (state, action) => {
       return {
         ...state,
         topology: topologyWithNode,
-        simulation: getInitialSimulationState(topologyWithNode),
+        simulation: getInitialSimulationState(topologyWithNode, state.simulation.routingMode),
       };
     }
     case 'UPDATE_NODE_POSITION':
@@ -93,7 +115,7 @@ const simulationReducer = (state, action) => {
       return {
         ...state,
         topology: topologyWithLink,
-        simulation: getInitialSimulationState(topologyWithLink),
+        simulation: getInitialSimulationState(topologyWithLink, state.simulation.routingMode),
       };
     }
     case 'UPDATE_LINK_COST': {
@@ -104,7 +126,7 @@ const simulationReducer = (state, action) => {
       return {
         ...state,
         topology: topologyWithUpdatedLink,
-        simulation: getInitialSimulationState(topologyWithUpdatedLink),
+        simulation: getInitialSimulationState(topologyWithUpdatedLink, state.simulation.routingMode),
       };
     }
     case 'DELETE_NODE': {
@@ -115,7 +137,7 @@ const simulationReducer = (state, action) => {
       return {
         ...state,
         topology: topologyWithoutNode,
-        simulation: getInitialSimulationState(topologyWithoutNode),
+        simulation: getInitialSimulationState(topologyWithoutNode, state.simulation.routingMode),
       };
     }
     case 'DELETE_LINK': {
@@ -126,13 +148,13 @@ const simulationReducer = (state, action) => {
       return {
         ...state,
         topology: topologyWithoutLink,
-        simulation: getInitialSimulationState(topologyWithoutLink),
+        simulation: getInitialSimulationState(topologyWithoutLink, state.simulation.routingMode),
       };
     }
     case 'RESET_SIMULATION':
       return {
         ...state,
-        simulation: getInitialSimulationState(state.topology),
+        simulation: getInitialSimulationState(state.topology, state.simulation.routingMode),
       };
     case 'STEP_SIMULATION': {
       if (Object.keys(state.simulation.nodeStates).length === 0) {
@@ -152,10 +174,19 @@ const simulationReducer = (state, action) => {
         };
       }
 
-      const { nextStates, messages } = runDistanceVectorStep(
-        state.topology,
-        state.simulation.nodeStates
-      );
+      let nextStates = state.simulation.nodeStates;
+      let messages = [];
+      let lsdb = state.simulation.lsdb;
+      if (state.simulation.routingMode === 'dv') {
+        const res = runDistanceVectorStep(state.topology, state.simulation.nodeStates);
+        nextStates = res.nextStates;
+        messages = res.messages;
+      } else {
+        const res = runOSPFStep(state.topology, state.simulation.nodeStates);
+        nextStates = res.nextStates;
+        messages = res.messages;
+        lsdb = res.lsdb;
+      }
 
       const nextStep = state.simulation.step + 1;
       const newMessages = messages.map((msg, idx) => ({
@@ -174,6 +205,7 @@ const simulationReducer = (state, action) => {
           nodeStates: nextStates,
           history: { ...state.simulation.history, [nextStep]: nextStates },
           messages: [...state.simulation.messages, ...newMessages],
+          lsdb
         },
       };
     }
@@ -189,7 +221,7 @@ const simulationReducer = (state, action) => {
       return {
         ...state,
         topology: action.payload,
-        simulation: { ...initialState.simulation }
+        simulation: getInitialSimulationState(action.payload, state.simulation.routingMode)
       };
     case 'HYDRATE_NODE_STATES': {
       const hydratedStates = action.payload.nodeStates;
@@ -206,6 +238,33 @@ const simulationReducer = (state, action) => {
             { id: `hydrate-${nextStep}`, from: 'System', to: 'All', content: 'Routes hydrated for packet send', type: 'info' }
           ],
         },
+      };
+    }
+    case 'SET_ROUTING_MODE': {
+      const mode = action.payload;
+      return {
+        ...state,
+        simulation: getInitialSimulationState(state.topology, mode),
+      };
+    }
+    case 'SEND_MESSAGE': {
+      const msg = {
+        id: crypto.randomUUID(),
+        from: action.payload.from,
+        to: action.payload.to,
+        content: action.payload.content,
+        timestamp: Date.now(),
+      };
+      const inboxes = { ...(state.simulation.inboxes || {}) };
+      const existing = inboxes[action.payload.to] || [];
+      inboxes[action.payload.to] = [...existing, msg];
+      return {
+        ...state,
+        simulation: {
+          ...state.simulation,
+          inboxes,
+          messages: [...state.simulation.messages, { id: `msg-${msg.id}`, from: action.payload.from, to: action.payload.to, content: action.payload.content, type: 'info' }]
+        }
       };
     }
     default:

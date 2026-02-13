@@ -190,6 +190,45 @@ export const NetworkGraph = ({ width = 800, height = 600, onNodeClick, onLinkCli
     const packetGroup = g.append('g').attr('class', 'packet');
     overlayRef.current = packetGroup;
 
+    if (state.simulation.routingMode === 'ospf') {
+      const highlightGroup = packetGroup.append('g').attr('class', 'ospf-path');
+      path.slice(0, -1).forEach((nodeId, idx) => {
+        const nextId = path[idx + 1];
+        const s = topology.nodes.find(n => n.id === nodeId);
+        const t = topology.nodes.find(n => n.id === nextId);
+        if (s && t) {
+          highlightGroup.append('line')
+            .attr('x1', s.x)
+            .attr('y1', s.y)
+            .attr('x2', t.x)
+            .attr('y2', t.y)
+            .attr('stroke', '#ef4444')
+            .attr('stroke-width', 4)
+            .attr('opacity', 0.9);
+        }
+      });
+      const altPath = state.simulation.activePacket?.altPath || [];
+      if (altPath && altPath.length > 1) {
+        const altGroup = packetGroup.append('g').attr('class', 'ospf-alt-path');
+        altPath.slice(0, -1).forEach((nodeId, idx) => {
+          const nextId = altPath[idx + 1];
+          const s = topology.nodes.find(n => n.id === nodeId);
+          const t = topology.nodes.find(n => n.id === nextId);
+          if (s && t) {
+            altGroup.append('line')
+              .attr('x1', s.x)
+              .attr('y1', s.y)
+              .attr('x2', t.x)
+              .attr('y2', t.y)
+              .attr('stroke', '#22c55e')
+              .attr('stroke-width', 3)
+              .attr('opacity', 0.8)
+              .attr('stroke-dasharray', '6,4');
+          }
+        });
+      }
+    }
+
     let transition = packetGroup.append('circle')
       .attr('r', 8)
       .attr('fill', '#f59e0b')

@@ -54,6 +54,7 @@ export const SimulationControls = () => {
               )}
             </Button>
 
+
             <Button
               variant="outline"
               size="sm"
@@ -66,7 +67,18 @@ export const SimulationControls = () => {
             </Button>
           </div>
 
-          
+          <div className="flex items-center gap-2">
+            <span className="text-sm font-medium text-gray-700">Routing:</span>
+            <select
+              className="text-sm border-gray-300 rounded-md shadow-sm focus:border-blue-500 focus:ring-blue-500 bg-white border px-2 py-1"
+              value={simulation.routingMode || 'dv'}
+              onChange={(e) => dispatch({ type: 'SET_ROUTING_MODE', payload: e.target.value })}
+              disabled={simulation.isRunning}
+            >
+              <option value="dv">Distance Vector</option>
+              <option value="ospf">OSPF</option>
+            </select>
+          </div>
         </div>
 
         <div className="flex items-center gap-4">

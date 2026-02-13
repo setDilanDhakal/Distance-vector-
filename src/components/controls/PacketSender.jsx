@@ -4,6 +4,7 @@ import { Button } from '../ui/Button.jsx';
 import { Send, CheckCircle2, XCircle, ArrowRight, StopCircle } from 'lucide-react';
 import { Card } from '../ui/Card.jsx';
 import { initializeNodeState, runDistanceVectorStep, INFINITY } from '../../utils/algorithm.js';
+import { runOSPFStep, computeSecondBestPath } from '../../utils/ospf.js';
 
 export const PacketSender = () => {
   const { state, dispatch } = useSimulation();
@@ -11,6 +12,8 @@ export const PacketSender = () => {
   const [source, setSource] = useState('');
   const [target, setTarget] = useState('');
   const [pathResult, setPathResult] = useState(null);
+  const [showPathPopup, setShowPathPopup] = useState(false);
+  const [pathPopup, setPathPopup] = useState(null);
   const [isSending, setIsSending] = useState(false);
   const [runCountInput, setRunCountInput] = useState('1');
   const [runMode, setRunMode] = useState('once');
@@ -18,6 +21,17 @@ export const PacketSender = () => {
   useEffect(() => {
     if (source && !topology.nodes.find(n => n.id === source)) setSource('');
     if (target && !topology.nodes.find(n => n.id === target)) setTarget('');
+  }, [topology.nodes, source, target]);
+
+  useEffect(() => {
+    if (!source || !target) {
+      const nodes = [...topology.nodes].sort((a, b) => a.label.localeCompare(b.label));
+      if (!source && nodes[0]) setSource(nodes[0].id);
+      if (!target && nodes[1]) {
+        const defaultTarget = nodes[1].id === source && nodes[2] ? nodes[2].id : nodes[1].id;
+        setTarget(defaultTarget);
+      }
+    }
   }, [topology.nodes, source, target]);
 
   const stopSending = () => {
@@ -34,24 +48,38 @@ export const PacketSender = () => {
       topology.nodes.forEach(node => {
         initStates[node.id] = initializeNodeState(node.id, topology);
       });
-      workingStates = initStates;
+      if (simulation.routingMode === 'ospf') {
+        const res = runOSPFStep(topology, initStates);
+        workingStates = res.nextStates;
+      } else {
+        workingStates = initStates;
+      }
     }
     let routeFromSource = workingStates[source]?.routingTable?.[target];
     if (!routeFromSource || routeFromSource.cost >= INFINITY) {
-      let tmpStates = workingStates;
-      const iterations = topology.nodes.length * 4;
-      for (let i = 0; i < iterations; i++) {
-        const step = runDistanceVectorStep(topology, tmpStates);
-        tmpStates = step.nextStates;
-        const r = tmpStates[source]?.routingTable?.[target];
-        if (r && r.cost < INFINITY) {
-          workingStates = tmpStates;
-          routeFromSource = r;
-          break;
+      if (simulation.routingMode === 'dv') {
+        let tmpStates = workingStates;
+        const iterations = topology.nodes.length * 4;
+        for (let i = 0; i < iterations; i++) {
+          const step = runDistanceVectorStep(topology, tmpStates);
+          tmpStates = step.nextStates;
+          const r = tmpStates[source]?.routingTable?.[target];
+          if (r && r.cost < INFINITY) {
+            workingStates = tmpStates;
+            routeFromSource = r;
+            break;
+          }
         }
-      }
-      if (routeFromSource && routeFromSource.cost < INFINITY) {
-        dispatch({ type: 'HYDRATE_NODE_STATES', payload: { nodeStates: workingStates } });
+        if (routeFromSource && routeFromSource.cost < INFINITY) {
+          dispatch({ type: 'HYDRATE_NODE_STATES', payload: { nodeStates: workingStates } });
+        }
+      } else {
+        const res = runOSPFStep(topology, workingStates);
+        workingStates = res.nextStates;
+        routeFromSource = workingStates[source]?.routingTable?.[target];
+        if (routeFromSource && routeFromSource.cost < INFINITY) {
+          dispatch({ type: 'HYDRATE_NODE_STATES', payload: { nodeStates: workingStates } });
+        }
       }
     }
 
@@ -94,8 +122,34 @@ export const PacketSender = () => {
       }
     }
 
+    let altPath = null;
+    if (simulation.routingMode === 'ospf') {
+      altPath = computeSecondBestPath(topology, source, target);
+    }
     if (found) {
-      setPathResult({ found: true, path, cost: totalCost });
+      setPathResult({ found: true, path, cost: totalCost, mode: simulation.routingMode });
+      if (simulation.routingMode === 'ospf') {
+        const calcCost = (p) => {
+          if (!p || p.length < 2) return 0;
+          let cost = 0;
+          for (let i = 0; i < p.length - 1; i++) {
+            const u = p[i];
+            const v = p[i + 1];
+            const link = topology.links.find(l =>
+              (l.source === u && l.target === v) || (l.source === v && l.target === u)
+            );
+            if (!link) return INFINITY;
+            cost += link.cost;
+          }
+          return cost;
+        };
+        setPathPopup({
+          mode: 'ospf',
+          shortest: { path, cost: totalCost },
+          alternate: altPath ? { path: altPath, cost: calcCost(altPath) } : null
+        });
+        setShowPathPopup(true);
+      }
       setIsSending(true);
       let runCount = 1;
       let loop = false;
@@ -113,6 +167,7 @@ export const PacketSender = () => {
         type: 'START_PACKET_ANIMATION',
         payload: {
           path,
+          altPath,
           currentStep: 0,
           loop,
           runCount,
@@ -120,7 +175,7 @@ export const PacketSender = () => {
         }
       });
     } else {
-      setPathResult({ found: false, path: [], cost: 0 });
+      setPathResult({ found: false, path: [], cost: 0, mode: simulation.routingMode });
       setTimeout(() => setPathResult(null), 3000);
     }
   };
@@ -207,7 +262,10 @@ export const PacketSender = () => {
             {pathResult.found ? (
               <>
                 <CheckCircle2 className="w-4 h-4" />
-                <span>Path Found! Cost: {pathResult.cost}</span>
+                <span>{pathResult.mode === 'ospf' ? 'OSPF Shortest Path' : 'Path'} Cost: {pathResult.cost}</span>
+                <span className="ml-2 text-xs bg-white/60 text-gray-700 px-2 py-0.5 rounded">
+                  {pathResult.path.map(id => topology.nodes.find(n => n.id === id)?.label || id.substring(0, 4)).join(' → ')}
+                </span>
               </>
             ) : (
               <>
@@ -215,6 +273,51 @@ export const PacketSender = () => {
                 <span>Unreachable</span>
               </>
             )}
+          </div>
+        )}
+        {showPathPopup && pathPopup?.mode === 'ospf' && (
+          <div className="fixed bottom-4 right-4 z-40 pointer-events-none">
+            <div className="bg-white rounded-lg shadow-xl border border-gray-200 w-[380px] pointer-events-auto">
+              <div className="px-3 py-2 border-b flex items-center justify-between">
+                <h3 className="text-sm font-semibold text-gray-900">OSPF Path Calculation</h3>
+                <button
+                  className="text-gray-500 hover:text-gray-700"
+                  onClick={() => setShowPathPopup(false)}
+                  aria-label="Close"
+                >
+                  ×
+                </button>
+              </div>
+              <div className="p-3 space-y-3 text-xs">
+                <div className="space-y-1">
+                  <div className="flex items-center gap-2">
+                    <span className="inline-block w-3 h-3 rounded bg-red-500"></span>
+                    <span className="font-medium text-gray-900">Shortest Path</span>
+                    <span className="ml-auto text-[10px] text-gray-600">Cost: {pathPopup.shortest.cost}</span>
+                  </div>
+                  <div className="text-gray-700">
+                    {pathPopup.shortest.path.map(id => topology.nodes.find(n => n.id === id)?.label || id.substring(0, 4)).join(' → ')}
+                  </div>
+                </div>
+                <div className="space-y-1">
+                  <div className="flex items-center gap-2">
+                    <span className="inline-block w-3 h-3 rounded bg-emerald-500"></span>
+                    <span className="font-medium text-gray-900">Optimal Alternate Path</span>
+                    <span className="ml-auto text-[10px] text-gray-600">
+                      {pathPopup.alternate ? `Cost: ${pathPopup.alternate.cost}` : 'None'}
+                    </span>
+                  </div>
+                  <div className="text-gray-700">
+                    {pathPopup.alternate
+                      ? pathPopup.alternate.path.map(id => topology.nodes.find(n => n.id === id)?.label || id.substring(0, 4)).join(' → ')
+                      : 'No alternate route available'}
+                  </div>
+                </div>
+                <div className="flex items-center justify-end gap-2 pt-2 border-t">
+                  <Button size="sm" variant="outline" onClick={() => setShowPathPopup(false)}>Close</Button>
+                </div>
+              </div>
+            </div>
           </div>
         )}
       </div>
