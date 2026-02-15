@@ -12,7 +12,7 @@ export const SimulationPage = () => {
 
   return (
     <div className="flex flex-col h-screen bg-gray-100 overflow-hidden font-sans">
-      <div className="flex-none z-10 shadow-sm bg-white overflow-x-auto">
+      <div className="flex-none z-50 shadow-sm bg-white sticky top-0">
         <SimulationControls />
       </div>
 

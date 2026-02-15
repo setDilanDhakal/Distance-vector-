@@ -182,11 +182,11 @@ export const PacketSender = () => {
 
   return (
     <Card className="rounded-none border-x-0 border-t-0 shadow-sm z-20 bg-slate-50">
-      <div className="p-3 flex items-center gap-4 flex-wrap">
-        <div className="flex items-center gap-2">
+      <div className="px-2 py-3 sm:px-3 flex flex-col sm:flex-row items-start sm:items-center gap-3 sm:gap-4 flex-wrap">
+        <div className="flex items-center gap-2 flex-wrap">
           <span className="text-sm font-semibold text-gray-700">Data Transfer:</span>
           <select
-            className="text-sm border-gray-300 rounded-md shadow-sm focus:border-blue-500 focus:ring-blue-500 bg-white border px-2 py-1 w-32"
+            className="text-sm border-gray-300 rounded-md shadow-sm focus:border-blue-500 focus:ring-blue-500 bg-white border px-2 py-1 w-28 sm:w-32"
             value={source}
             onChange={(e) => { setSource(e.target.value); setPathResult(null); stopSending(); }}
             disabled={isSending}
@@ -198,7 +198,7 @@ export const PacketSender = () => {
           </select>
           <ArrowRight className="w-4 h-4 text-gray-400" />
           <select
-            className="text-sm border-gray-300 rounded-md shadow-sm focus:border-blue-500 focus:ring-blue-500 bg-white border px-2 py-1 w-32"
+            className="text-sm border-gray-300 rounded-md shadow-sm focus:border-blue-500 focus:ring-blue-500 bg-white border px-2 py-1 w-28 sm:w-32"
             value={target}
             onChange={(e) => { setTarget(e.target.value); setPathResult(null); stopSending(); }}
             disabled={isSending}
@@ -210,7 +210,7 @@ export const PacketSender = () => {
           </select>
         </div>
 
-        <div className="flex items-center gap-2 border-l pl-4 border-gray-300">
+        <div className="flex items-center gap-2 sm:border-l sm:pl-4 border-gray-300">
           <span className="text-sm text-gray-600">Mode:</span>
           <select
             className="text-sm border-gray-300 rounded-md shadow-sm focus:border-blue-500 focus:ring-blue-500 bg-white border px-2 py-1"

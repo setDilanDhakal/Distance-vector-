@@ -22,10 +22,10 @@ export const SimulationControls = () => {
   const handleAlgorithmChange = () => {};
 
   return (
-    <Card className="rounded-none border-x-0 border-t-0 shadow-sm z-20 overflow-x-auto">
-      <div className="p-3 flex items-center justify-between gap-4 min-w-max">
-        <div className="flex items-center gap-4">
-          <div className="flex items-center gap-2 border-r pr-4">
+    <Card className="rounded-none border-x-0 border-t-0 shadow-sm z-20">
+      <div className="px-2 py-3 sm:px-3 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2">
+        <div className="flex items-center gap-2 flex-wrap">
+          <div className="flex items-center gap-2 sm:border-r sm:pr-4">
             <Button
               variant="ghost"
               size="sm"
@@ -36,7 +36,7 @@ export const SimulationControls = () => {
               Reset
             </Button>
 
-            <div className="h-6 w-px bg-gray-200 mx-1"></div>
+            <div className="hidden sm:block h-6 w-px bg-gray-200 mx-1"></div>
 
             <Button
               variant={simulation.isRunning ? 'secondary' : 'primary'}
@@ -81,15 +81,15 @@ export const SimulationControls = () => {
           </div>
         </div>
 
-        <div className="flex items-center gap-4">
-          <div className="flex items-center gap-2">
+        <div className="flex items-center gap-3 flex-wrap w-full sm:w-auto">
+          <div className="flex items-center gap-2 w-full sm:w-auto">
             <span className="text-sm text-gray-500">Speed:</span>
             <input
               type="range"
               min="100"
               max="2000"
               step="100"
-              className="w-32 h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer"
+              className="w-full sm:w-32 h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer"
               value={2100 - speed}
               onChange={(e) => setSpeed(2100 - parseInt(e.target.value))}
             />
